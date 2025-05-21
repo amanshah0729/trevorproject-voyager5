@@ -11,12 +11,12 @@ type SortField = 'urgency' | 'lastCall';
 type SortOrder = 'asc' | 'desc';
 
 export default function PatientList({ onSelect }: { onSelect: (caller: Caller) => void }) {
-  const [callers, setCallers] = useState<(Caller & { urgency_score?: number })[]>([]);
+  const [callers, setCallers] = useState<(Caller & { urgency_score?: number; last_source?: string | null })[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [sortField, setSortField] = useState<SortField>('lastCall');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [filterSource, setFilterSource] = useState<'All' | 'Phone call' | 'Chatbot'>('All');
+  const [filterSource, setFilterSource] = useState<'All' | 'Phone Call' | 'Chatbot'>('All');
 
   const getUrgencyColor = (score: number | undefined) => {
     if (!score) return 'bg-gray-400';
@@ -161,12 +161,12 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
       </div>
       {/* Filter Tab */}
       <div className="flex gap-2 px-2 mb-2">
-        {['All', 'Phone call', 'Chatbot'].map((type) => (
+        {['All', 'Phone Call', 'Chatbot'].map((type) => (
           <Button
             key={type}
             variant={filterSource === type ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilterSource(type as 'All' | 'Phone call' | 'Chatbot')}
+            onClick={() => setFilterSource(type as 'All' | 'Phone Call' | 'Chatbot')}
             className={filterSource === type ? 'font-bold' : ''}
           >
             {type}
@@ -177,7 +177,7 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
         {callers
           .filter((caller) => {
             if (filterSource === 'All') return true;
-            if (filterSource === 'Phone call') return caller.last_source === 'Phone Call';
+            if (filterSource === 'Phone Call') return caller.last_source === 'Phone';
             if (filterSource === 'Chatbot') return caller.last_source === 'Chatbot';
             return true;
           })
