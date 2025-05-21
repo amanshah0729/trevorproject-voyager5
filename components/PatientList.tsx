@@ -16,6 +16,7 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
   const [mounted, setMounted] = useState(false);
   const [sortField, setSortField] = useState<SortField>('lastCall');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [filterSource, setFilterSource] = useState<'All' | 'Phone call' | 'Chatbot'>('All');
 
   const getUrgencyColor = (score: number | undefined) => {
     if (!score) return 'bg-gray-400';
@@ -66,18 +67,19 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
         return;
       }
 
-      // For each caller, fetch their most recent call to get the urgency score
+      // For each caller, fetch their most recent call to get the urgency score and source
       const callersWithScoresData = await Promise.all((callersData || []).map(async (caller) => {
         const { data: callsData } = await supabase
           .from('calls')
-          .select('urgency_score')
+          .select('urgency_score, source')
           .eq('phone_number', caller.phone_number)
           .order('call_timestamp', { ascending: false })
           .limit(1);
 
         return {
           ...caller,
-          urgency_score: callsData?.[0]?.urgency_score
+          urgency_score: callsData?.[0]?.urgency_score,
+          last_source: callsData?.[0]?.source || null,
         };
       }));
 
@@ -157,34 +159,54 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
           </Button>
         </div>
       </div>
-
-      <div className="space-y-2">
-        {callers.map((caller) => (
-          <div
-            key={caller.phone_number}
-            className={`p-3 rounded-lg cursor-pointer transition-colors ${
-              selectedId === caller.phone_number ? 'bg-accent' : 'hover:bg-accent/50'
-            }`}
-            onClick={() => {
-              setSelectedId(caller.phone_number);
-              onSelect(caller);
-            }}
+      {/* Filter Tab */}
+      <div className="flex gap-2 px-2 mb-2">
+        {['All', 'Phone call', 'Chatbot'].map((type) => (
+          <Button
+            key={type}
+            variant={filterSource === type ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterSource(type as 'All' | 'Phone call' | 'Chatbot')}
+            className={filterSource === type ? 'font-bold' : ''}
           >
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">{caller.name || 'Anonymous'}</span>
-                <div className={`flex items-center gap-2 rounded-full px-2 py-1 text-white ${getUrgencyColor(caller.urgency_score)}`}>
-                  <span className="text-xs font-medium">
-                    {typeof caller.urgency_score === 'number' ? caller.urgency_score : 'No Score'}
-                  </span>
+            {type}
+          </Button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {callers
+          .filter((caller) => {
+            if (filterSource === 'All') return true;
+            if (filterSource === 'Phone call') return caller.last_source === 'Phone Call';
+            if (filterSource === 'Chatbot') return caller.last_source === 'Chatbot';
+            return true;
+          })
+          .map((caller) => (
+            <div
+              key={caller.phone_number}
+              className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                selectedId === caller.phone_number ? 'bg-accent' : 'hover:bg-accent/50'
+              }`}
+              onClick={() => {
+                setSelectedId(caller.phone_number);
+                onSelect(caller);
+              }}
+            >
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{caller.name || 'Anonymous'}</span>
+                  <div className={`flex items-center gap-2 rounded-full px-2 py-1 text-white ${getUrgencyColor(caller.urgency_score)}`}>
+                    <span className="text-xs font-medium">
+                      {typeof caller.urgency_score === 'number' ? caller.urgency_score : 'No Score'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Last Interaction: {new Date(caller.last_call_timestamp).toLocaleDateString()}
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                Last Interaction: {new Date(caller.last_call_timestamp).toLocaleDateString()}
-              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
     </div>
   );
