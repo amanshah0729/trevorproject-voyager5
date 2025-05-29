@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Caller } from '@/lib/supabase';
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 type SortField = 'urgency' | 'lastCall';

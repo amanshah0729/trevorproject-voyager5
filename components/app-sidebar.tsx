@@ -5,10 +5,35 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { ChevronDown } from 'lucide-react';
 import { useSidebar } from '@/contexts/SidebarContext';
 
+interface Mail {
+  phoneNumber: string;
+  name: string;
+  urgency: number;
+  lastCall: string;
+}
+
+const navMain = [
+  { title: 'Patient List' }
+];
+
+const initialMails: Mail[] = [
+  {
+    phoneNumber: '1',
+    name: 'John Doe',
+    urgency: 7,
+    lastCall: '2024-03-20'
+  },
+  {
+    phoneNumber: '2',
+    name: 'Jane Smith',
+    urgency: 4,
+    lastCall: '2024-03-19'
+  }
+];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-  const [mails, setMails] = React.useState(data.mails)
-  const { setOpen } = useSidebar()
+  const [activeItem] = React.useState(navMain[0]);
+  const [mails, setMails] = React.useState<Mail[]>(initialMails);
 
   const getUrgencyColor = (score: number) => {
     if (score >= 8) return 'bg-red-500';
@@ -22,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const sortByLastCall = () => {
-    setMails([...mails].sort((a, b) => new Date(b.lastCall) - new Date(a.lastCall)));
+    setMails([...mails].sort((a, b) => new Date(b.lastCall).getTime() - new Date(a.lastCall).getTime()));
   };
 
   return (
@@ -31,7 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
       {...props}
     >
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+      <div className="hidden flex-1 md:flex flex-col">
         <SidebarHeader className="gap-3.5 border-b bg-orange-200 p-4">
           <div className="flex w-full items-center justify-between">
             <div className="text-base font-medium text-foreground">
@@ -71,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-      </Sidebar>
+      </div>
     </Sidebar>
   );
 } 

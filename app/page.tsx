@@ -7,7 +7,7 @@ import PatientList from '@/components/PatientList';
 import PatientDetails from '@/components/PatientDetails';
 import type { Caller } from '@/lib/supabase';
 import { RefreshCw } from "lucide-react";
-
+//deploying for jimbo
 export default function Home() {
   const [selectedCaller, setSelectedCaller] = useState<Caller | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);

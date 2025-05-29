@@ -127,8 +127,8 @@ export default function PatientDetails({ caller }: { caller: Caller }) {
       'Have you done anything to harm yourself today?',
       'Do you need urgent help?'
     ];
-    let filteredLines: string[] = [];
-    let foundQuestions = new Set<string>();
+    const filteredLines: string[] = [];
+    const foundQuestions = new Set<string>();
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.startsWith('AI:')) {
