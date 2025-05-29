@@ -32,6 +32,6 @@ export type Call = {
     rms: number;
     zcr: number;
   }>;
-  urgency_score: number;
+  urgency_level: 'LOW' | 'MEDIUM' | 'IMMINENT';
   source?: string;
 };

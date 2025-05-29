@@ -11,27 +11,36 @@ type SortField = 'urgency' | 'lastCall';
 type SortOrder = 'asc' | 'desc';
 
 export default function PatientList({ onSelect }: { onSelect: (caller: Caller) => void }) {
-  const [callers, setCallers] = useState<(Caller & { urgency_score?: number; last_source?: string | null })[]>([]);
+  const [callers, setCallers] = useState<(Caller & { urgency_level?: 'LOW' | 'MEDIUM' | 'IMMINENT'; last_source?: string | null })[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [sortField, setSortField] = useState<SortField>('lastCall');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [filterSource, setFilterSource] = useState<'All' | 'Phone Call' | 'Chatbot'>('All');
 
-  const getUrgencyColor = (score: number | undefined) => {
-    if (!score) return 'bg-gray-400';
-    if (score >= 8) return 'bg-red-500';
-    if (score >= 5) return 'bg-orange-500';
-    if (score >= 3) return 'bg-yellow-500';
-    return 'bg-green-500';
+  const getUrgencyColor = (level: string | undefined) => {
+    if (!level) return 'bg-gray-400';
+    switch (level) {
+      case 'IMMINENT':
+        return 'bg-[#7155ff]';
+      case 'MEDIUM':
+        return 'bg-[#e7bf14]';
+      case 'LOW':
+        return 'bg-[#013540]';
+      default:
+        return 'bg-gray-400';
+    }
   };
 
-  const sortCallers = (callers: (Caller & { urgency_score?: number })[], field: SortField, order: SortOrder) => {
+  const sortCallers = (callers: (Caller & { urgency_level?: 'LOW' | 'MEDIUM' | 'IMMINENT' })[], field: SortField, order: SortOrder) => {
     return [...callers].sort((a, b) => {
       if (field === 'urgency') {
-        const scoreA = a.urgency_score || 0;
-        const scoreB = b.urgency_score || 0;
-        return order === 'asc' ? scoreA - scoreB : scoreB - scoreA;
+        const levelA = a.urgency_level || 'LOW';
+        const levelB = b.urgency_level || 'LOW';
+        const urgencyOrder = { 'IMMINENT': 3, 'MEDIUM': 2, 'LOW': 1 };
+        return order === 'asc' 
+          ? urgencyOrder[levelA] - urgencyOrder[levelB]
+          : urgencyOrder[levelB] - urgencyOrder[levelA];
       } else {
         const dateA = new Date(a.last_call_timestamp).getTime();
         const dateB = new Date(b.last_call_timestamp).getTime();
@@ -71,14 +80,14 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
       const callersWithScoresData = await Promise.all((callersData || []).map(async (caller) => {
         const { data: callsData } = await supabase
           .from('calls')
-          .select('urgency_score, source')
+          .select('urgency_level, source')
           .eq('phone_number', caller.phone_number)
           .order('call_timestamp', { ascending: false })
           .limit(1);
 
         return {
           ...caller,
-          urgency_score: callsData?.[0]?.urgency_score,
+          urgency_level: callsData?.[0]?.urgency_level,
           last_source: callsData?.[0]?.source || null,
         };
       }));
@@ -195,9 +204,9 @@ export default function PatientList({ onSelect }: { onSelect: (caller: Caller) =
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">{caller.name || 'Anonymous'}</span>
-                  <div className={`flex items-center gap-2 rounded-full px-2 py-1 text-white ${getUrgencyColor(caller.urgency_score)}`}>
+                  <div className={`flex items-center gap-2 rounded-full px-2 py-1 text-white ${getUrgencyColor(caller.urgency_level)}`}>
                     <span className="text-xs font-medium">
-                      {typeof caller.urgency_score === 'number' ? caller.urgency_score : 'No Score'}
+                      {caller.urgency_level || 'No Level'}
                     </span>
                   </div>
                 </div>

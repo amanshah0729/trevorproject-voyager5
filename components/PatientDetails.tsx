@@ -23,11 +23,23 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const flagColors = {
+  YES: 'bg-[#fc583f]', // orange-red
+  IP: 'bg-[#e7bf14]',  // yellow
+  AS: 'bg-[#7155ff]',  // purple
+  VI: 'bg-[#013540]',  // dark blue
+  FV: 'bg-gray-500',   // gray
+};
+
+function getFlagColor(flag: keyof typeof flagColors): string {
+  return flagColors[flag] || 'bg-gray-400';
+}
+
 export default function PatientDetails({ caller }: { caller: Caller }) {
   const [calls, setCalls] = useState<Call[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [selectedCall, setSelectedCall] = useState<(Call & { flags?: string[] }) | null>(null);
 
   useEffect(() => {
     const fetchCallerData = async () => {
@@ -111,13 +123,12 @@ export default function PatientDetails({ caller }: { caller: Caller }) {
     const lines = transcript.split('\n');
     const keyQuestions = [
       'How are you feeling?',
-      'Have you thought about committing suicide lately?',
+      'Have you had any thoughts of suicide in the last few days, including today?',
+      'Have you done anything to harm yourself today?',
       'Do you need urgent help?'
     ];
-    
     let filteredLines: string[] = [];
     let foundQuestions = new Set<string>();
-    
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.startsWith('AI:')) {
@@ -134,15 +145,21 @@ export default function PatientDetails({ caller }: { caller: Caller }) {
         }
       }
     }
-    
     return filteredLines.join('\n');
   };
 
-  const getUrgencyColor = (score: number) => {
-    if (score >= 8) return 'bg-red-500';
-    if (score >= 5) return 'bg-orange-500';
-    if (score >= 3) return 'bg-yellow-500';
-    return 'bg-green-500';
+  const getUrgencyColor = (level: string | undefined) => {
+    if (!level) return 'bg-gray-300';
+    switch (level) {
+      case 'IMMINENT':
+        return 'bg-[#7155ff]';
+      case 'MEDIUM':
+        return 'bg-[#e7bf14]';
+      case 'LOW':
+        return 'bg-[#013540]';
+      default:
+        return 'bg-gray-300';
+    }
   };
 
   // Loading state UI
@@ -218,77 +235,75 @@ export default function PatientDetails({ caller }: { caller: Caller }) {
       <div className="grid grid-cols-3 gap-6">
         <Card className="col-span-2">
           <CardContent className="p-6">
-            <div className="flex items-center gap-6">
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-4xl font-bold ${selectedCall ? getUrgencyColor(selectedCall.urgency_score) : 'bg-gray-300'}`}>
-                {selectedCall ? selectedCall.urgency_score : '?'}
-              </div>
-              <div className="space-y-2 flex-1">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-bold">{caller.name || 'Anonymous'}</h3>
-                    {selectedCall && (
-                      <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${selectedCall.source === 'Chatbot' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                        {selectedCall.source === 'Chatbot' ? (
-                          <>
-                            <MessagesSquare className="w-4 h-4" />
-                            Chatbot
-                          </>
-                        ) : (
-                          <>
-                            <Phone className="w-4 h-4" />
-                            Phone Call
-                          </>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        Select Interaction
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {calls.map((call) => (
-                        <DropdownMenuItem
-                          key={call.id}
-                          onClick={() => setSelectedCall(call)}
-                          className={selectedCall?.id === call.id ? 'bg-accent' : ''}
-                        >
-                          {formatDate(call.call_timestamp)}
-                          <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${call.source === 'Chatbot' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                            {call.source === 'Chatbot' ? (
-                              <>
-                                <MessagesSquare className="w-4 h-4" />
-                                Chatbot
-                              </>
-                            ) : (
-                              <>
-                                <Phone className="w-4 h-4" />
-                                Phone Call
-                              </>
-                            )}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="space-y-1">
-                  <p><span className="font-medium">Phone Number:</span> {caller.phone_number}</p>
-                  <p><span className="font-medium">Last Interaction:</span> {formatDate(caller.last_call_timestamp)}</p>
-                  <p><span className="font-medium">Previous History:</span> {caller.previous_history || 'None'}</p>
-                  <p><span className="font-medium">Sexual Orientation:</span> {caller.sexual_orientation || 'Not specified'}</p>
-                  <p><span className="font-medium">Number of Calls:</span> {calls.length}</p>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-2xl font-bold">{caller.name || 'Anonymous'}</h3>
                   {selectedCall && (
-                    <p><span className="font-medium">Risk Level:</span> {
-                      selectedCall.urgency_score >= 8 ? 'Critical - Immediate intervention needed' :
-                      selectedCall.urgency_score >= 5 ? 'High Risk - Needs urgent attention' :
-                      selectedCall.urgency_score >= 3 ? 'Moderate Risk - Monitor closely' :
-                      'Low Risk - Stable but needs support'
-                    }</p>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold text-white ${getUrgencyColor(selectedCall.urgency_level)}`}>
+                      {selectedCall.urgency_level}
+                    </span>
                   )}
+                  {selectedCall && (
+                    <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${selectedCall.source === 'Chatbot' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                      {selectedCall.source === 'Chatbot' ? (
+                        <>
+                          <MessagesSquare className="w-4 h-4" />
+                          Chatbot
+                        </>
+                      ) : (
+                        <>
+                          <Phone className="w-4 h-4" />
+                          Phone Call
+                        </>
+                      )}
+                    </span>
+                  )}
+                  {(selectedCall?.flags ?? []).map((flag, idx) => (
+                    <span
+                      key={flag + idx}
+                      className={`px-2 py-1 rounded-full text-xs font-semibold text-white -ml-1 ${getFlagColor(flag as keyof typeof flagColors)}`}
+                      title={flag}
+                    >
+                      {flag}
+                    </span>
+                  ))}
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Previous Interactions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {calls.map((call) => (
+                      <DropdownMenuItem
+                        key={call.id}
+                        onClick={() => setSelectedCall(call)}
+                        className={selectedCall?.id === call.id ? 'bg-accent' : ''}
+                      >
+                        {formatDate(call.call_timestamp)}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Duration: {formatDuration(call.duration)}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="space-y-1">
+                <p><span className="font-medium">Phone Number:</span> {caller.phone_number}</p>
+                <p><span className="font-medium">Last Interaction:</span> {formatDate(caller.last_call_timestamp)}</p>
+                <p><span className="font-medium">Previous History:</span> {caller.previous_history || 'None'}</p>
+                <p><span className="font-medium">Sexual Orientation:</span> {caller.sexual_orientation || 'Not specified'}</p>
+                <p><span className="font-medium">Number of Calls:</span> {calls.length}</p>
+                {selectedCall && (
+                  <p><span className="font-medium">Risk Level:</span> {
+                    selectedCall.urgency_level === 'IMMINENT' ? 'Critical - Immediate intervention needed' :
+                    selectedCall.urgency_level === 'MEDIUM' ? 'High Risk - Needs urgent attention' :
+                    'Low Risk - Stable but needs support'
+                  }</p>
+                )}
               </div>
             </div>
           </CardContent>
